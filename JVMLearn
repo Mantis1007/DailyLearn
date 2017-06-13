@@ -8,35 +8,21 @@ Java堆用于存储实例对象，只要不断创建对象，并且保证GC Root
 想要方便快速地产生堆溢出，要使用如下java虚拟机参数：-Xms10m(最小堆内存为10MB)，-Xmx10m(最大堆内存为10MB，最小堆内存和最大堆内存相同是为了避免堆动态扩展)，-XX:+HeapDumpOnOutOfMemoryError可以让java虚拟机在出现内存溢出时产生当前堆内存快照以便进行异常分析。
 例子代码如下：
 
-public class HeapOOM{
+public class HeapOOM {
 
-    static class OOMObject{
+    static class OOMObject{
 
-  }
+    }
 
-public static void main(String[] args){
-    List<OOMObject> list = new ArrayList<OOMObject>();
+    public static void main(String[] args){
+        List<OOMObject> list = new ArrayList<OOMObject>();
 
-   while(true){
-       list.add(new OOMObject());
+        while(true){
+            list.add(new OOMObject());
 
-      }
-    }
-}
+        }
+    }
 
-public class HeapOOM{  
-    
-  static class OOMObject{
-
-     public static void main(String[] args){
-      
-     List<OOMObject> list = new ArrayList<OOMObject>();
-     
-    while(true){  
-     
-            list.add(new OOMObject());
-       }
-   }
 }
 运行一段时间就会发现产生OutOfMemoryError异常，并且产生了堆内存异常dump文件。
 
@@ -50,36 +36,17 @@ a.java虚拟机栈深度溢出：
 
 单线程的环境下，无论是由于栈帧太大，还是虚拟机栈容量太小，当内存无法再分配的时候，虚拟机总抛出StackOverflowError异常。使用-Xss128k将java虚拟机栈大小设置为128kb，例子代码如下：
 
-public class JavaVMStackOF{
+public class JavaVMStackOF {
+    private int stackLength = 1;
+    public void stackLeak(){
+        stackLength++;
+        stackLeak();
+    }
+    public static void main(String[] args){
 
-      private int stackLength = 1;
-      public void stackLeak(){
-      statckLength++;
-           stackLeak();
-     }
-public static void main(String[] args){
-
-     JavaVMStackOF oom = new JavaVMStackOF();
-      oom.stackLeak();
-
-}
-
-}
-public class JavaVMStackOF{
-    
-      private int stackLength = 1;
-     
-      public void stackLeak(){     
-     
-      statckLength++;              
-      stackLeak();
-
-  }
-public static void main(String[] args){
-     
-    JavaVMStackOF oom = new JavaVMStackOF();
-    oom.stackLeak();
-}
+        JavaVMStackOF oom = new JavaVMStackOF();
+        oom.stackLeak();
+    }
 }
 运行一段时间后，产生StackOverflowError异常。Java虚拟机栈溢出一般会产生在方法递归调用过多而java虚拟机栈内存不够的情况下。
 
@@ -89,57 +56,29 @@ b.java虚拟机栈内存溢出：
 
 使用-Xss2m参数设置java虚拟机栈内存大小为2MB，例子代码如下：
 
-public class JavaVMStackOOM{
+public class JavaVMStackOOM {
+    private void dontStop(){
+        while(true){}
 
-private void dontStop(){
-   while(true){
+    }
 
-  }
+    public void stackLeakByThread(){
 
-}
+        while(true){
 
-public void stackLeakByThread(){
+            Thread t = new Thread(new Runnable(){
 
-  while(true){
-
-  Thread t = new Thread(new Runnable(){
-
-     public void run(){
-                dontStop();
-         }
-       });
-     t.start();
-  }
-}
-public static void main(String[] args){
-        JavaVMStackOOM oom = new JavaVMStackOOM();
-        oom.stackLeakByThread();.
-    }
-}
-
-
-public class JavaVMStackOOM{
-       
-private void dontStop(){        
-  while(true){
-  }
-}
-public void stackLeakByThread(){ 
-  
-     while(true){               
-         Thread t = new Thread(new Runnable(){    
-            public void run(){      
-                dontStop();
-        }});
-       t.start();
-     }
-}
-
-public static void main(String[] args){  
-    
-   JavaVMStackOOM oom = new JavaVMStackOOM();        
-    oom. stackLeakByThread();
-
+                public void run(){
+                    dontStop();
+                }
+            });
+            t.start();
+        }
+    }
+    public static void main(String[] args){
+        JavaVMStackOOM oom = new JavaVMStackOOM();
+        oom. stackLeakByThread();
+    }
 }
 运行一段时间之后，java虚拟机栈就会因为内存太小无法创建线程而产生OutOfMemoryError。
 
@@ -152,24 +91,13 @@ String的intern()方法用于检查常量池中如果有等于此String对象的
 
 public class RuntimeConstantPoolOOM{
 
-  public static void main(String[] args){
-
-          List<String> list = new ArrayList<String>();
-          list.add(String.valueOf(i++).intern());
-  }
-
-}
-
-
-public class RuntimeConstantPoolOOM{
-     
-   public static void main(String[] args){
-      List<String> list = new ArrayList<String>();       
-      int i = 0;          
-      while(true){   
-          list.add(String.valueOf(i++).intern());
-      }
-  }
+         public static void main(String[] args){
+             List<String> list = new ArrayList<String>();
+             int i = 0;
+             while(true){
+                list.add(String.valueOf(i++).intern());
+             }
+    }
 }
 运行一段时间，永久代内存不够，运行时常量池因无法再添加常量而产生OutOfMemoryError。
 
@@ -177,54 +105,29 @@ public class RuntimeConstantPoolOOM{
 
 
 运行时常量池是方法区的一部分，他们都属于HotSpot虚拟机中的永久代内存区域。方法区用于存放Class的相关信息，Java的反射和动态代理可以动态产生Class，另外第三方的CGLIB可以直接操作字节码，也可以动态产生Class，实验通过CGLIB来演示，同样使用-XXPermSize=10m和-XX:MaxPermSize=10m将永久代最大内存和最小内存设置为10MB大小，并且由于永久代最大内存和最小内存大小相同，因此无法扩展。例子代码如下：
+1.8 已经不支持-XX:MaxPermSize=10配置了，改为 -XX:MaxMetaspaceSize option.
+public class JavaMethodAreaOOM {
+    class OOMObject{
+    }
+    public static void main(String[] args){
 
-public class JavaMethodAreaOOM{
+        while(true){
 
-  public static void main(String[] args){
+            Enhancer enhancer = new Enhancer();
+            enhancer.setSuperclass(JavaMethodAreaOOM.class);
 
-   while(true){
+            enhancer.setUseCache(false);
 
-                Enhancer enhancer = new Enhancer();
+            enhancer.setCallback(new MethodInterceptor(){
 
-                enhancer.setSuperClass(OOMObject.class);
-
-                 enhancer.setUseCache(false);
-
-                enhancer.setCallback(new MethodInterceptor(){
-
-                public Object intercept(Object obj, Method method, Object[] args,MethodProxy proxy)throws Throwable{
-                return proxy.invokeSuper(obj, args);
-  }
-});
-enhancer.create();
-}
-}
-
-class OOMObject{
-}
-}
-public class JavaMethodAreaOOM{ 
-   
-    public static void main(String[] args){  
-  
-    while(true){    
-   
-    Enhancer enhancer = new Enhancer();
-      
-     enhancer.setSuperClass(OOMObject.class); 
-    
-    enhancer.setUseCache(false);  
-      
-    enhancer.setCallback(new MethodInterceptor(){
-      
-     public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy)throws Throwable{
-     
-     return proxy.invokeSuper(obj, args);
-}
-});
-enhancer.create();
-}}
-class OOMObject{} 
+                public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy)throws Throwable{
+                    return proxy.invokeSuper(obj, args);
+                }
+            });
+            enhancer.create();
+        }
+    }
+    
 }
 运行一段时间之后，永久代内存不够，方法区无法再存放CGLIB创建处理的Class信息，产生方法区OutOfMemoryError。
 
@@ -235,9 +138,9 @@ Java虚拟机可以通过参数-XX:MaxDirectMemorySize设定本机直接内存�
 
 public class DirectMemoryOOM{
 
-                 private static final int _1MB = 1024* 1024 * 1024;
+     private static final int _1MB = 1024* 1024 * 1024;
 
-                publc static void main(String[] args) throws Exception{
+     publc static void main(String[] args) throws Exception{
 
                 Field unsafeField = Unsafe.class.getDeclaredFields()[0];
 
@@ -249,27 +152,9 @@ public class DirectMemoryOOM{
 
                          //unsafe直接想操作系统申请内存
                        unsafe.allocateMemory(_1MB);
+              }
+      }
 }
-}
-}
-public class DirectMemoryOOM{   
-   
-    private static final int _1MB = 1024* 1024 * 1024; 
-  
-     publc static void main(String[] args) throws Exception{ 
-         
-      Field unsafeField = Unsafe.class.getDeclaredFields()[0]; 
-         
-      unsafeField.setAccessible(true);        
-      
-      Unsafe unsafe = (Unsafe) unsafeField.get(null); 
-       
-     while(true){   
-                 
-      //unsafe直接想操作系统申请内存       
-     unsafe.allocateMemory(_1MB);
-     }
-     }
-}
+
 
 当运行一段时间之后，10MB的本机直接内存被分配光，无法在进行直接内存分配时，产生OutOfMemoryError。

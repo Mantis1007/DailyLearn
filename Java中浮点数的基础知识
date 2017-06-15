@@ -1,0 +1,25 @@
+偶然查看Math.round的JDK
+1  public static int round(float a) {
+2         if (a != 0x1.fffffep-2f) // greatest float value less than 0.5
+3             return (int)floor(a + 0.5f);
+4         else
+5             return 0;
+6     }
+ 
+注释说0x1.fffffep-2f是最接近0.5的float类型的小数，咦，科学计数法用e表示指数我是知道的，但是这个p是什么鬼。可能有的读者还会问，为什么这个数时最接近0.5的数，这个数到底是多少呢？所以现在的问题有两个：
+1、p代表什么。
+2、0x1.fffffep-2f 用十进制表示到底是多少。
+先公布答案，P在16进制表示的浮点数中代替e作为科学计数法指数部分的标志，1.fffffep-2f中的e是十六进制中的14;第二个问题很简单，也很复杂。说它简单是因为只需要几行代码就可以知道该值是多少。
+System.out.println( 0x1.fffffep-2f);
+BigDecimal bigDecimal=new BigDecimal(0x1.fffffep-2f);
+System.out.println(bigDecimal.toPlainString());
+
+/*输出
+0.49999997
+0.4999999701976776123046875
+说它复杂是理解它为什么是最近0.5的float数。
+ 
+1、P究竟是什么
+原来为了和十六进制中的e进行区分，在java中用16进制表示的浮点数，我们用P代替e作为指数的标志。所以该常数代表0x1.fffffe * 2^(-2),f(F)是float后缀，不写代表是double类型。
+ A floating-point literal has the following parts: a whole-number part, a decimal or hexadecimal point (represented by an ASCII period character), a fractional part, an exponent, and a type suffix. A floating point number may be written either as a decimal value or as a hexadecimal value. For decimal literals, the exponent, if present, is indicated by the ASCII letter e or E followed by an optionally signed integer. For hexadecimal literals, the exponent is always required and is indicated by the ASCII letter p or P followed by an optionally signed integer.
+参考链接:https://stackoverflow.com/questions/8603232/p-in-constant-declaration/8603263#8603263(中文版Java语言规范3.10.2)
